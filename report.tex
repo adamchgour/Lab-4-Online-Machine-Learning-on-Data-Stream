@@ -66,21 +66,21 @@
 
 \textbf{Lab 4}  /  Adam Chgour  /  20 November 2026
 
-This study compares incremental learners and drift responses using ordered data streams. River covers regression, classification and drift detection. CapyMOA provides a second implementation for classification and extends the study to unsupervised clustering and AutoML.
+I used River to compare online models for regression and classification and to test how they respond to drift. I then ran comparable classifiers in CapyMOA and used it for the clustering and model selection experiments.
 
 \subsection*{Streams}
 
 \reporttable{streams}{Six public UCI benchmarks and two synthetic streams with known changes.}
 
-Real forecasts use the previous interval's target and sensor readings plus the known calendar of the forecast interval. Only adjacent intervals form forecast pairs. Metro traffic uses the first 12,000 valid pairs after filtering invalid temperatures and keeping the first reading at repeated timestamps. Occupancy is sorted by timestamp and EEG follows recording order. Gas sensor batches are replayed in date order, with seeded shuffling within each batch to remove class grouping.
+For the real forecasting datasets, I used the previous interval's target and sensor readings, along with the hour and day of the forecast. I kept only consecutive intervals. For Metro traffic, I took the first 12,000 valid pairs after removing invalid temperatures and keeping the first reading at each timestamp. I sorted the occupancy data by time and kept EEG in recording order. I used the gas sensor batches in date order and shuffled the rows within each batch to remove grouping by gas.
 
-\subsection*{Evaluation protocol}
+\subsection*{Evaluation}
 
-The prequential protocol follows Barry (slide 17). Predict with the model at $t-1$, score against the revealed target, and train on row $t$. All rows count, with 0 used when a learner abstains at startup. Whole-stream scores summarize the replay, while 250-row block scores show local changes in performance. Use a fixed order for every replay and seed 42 for data generation and learners with an explicit seed. For linear learners and regression kNN, each feature vector is standardized using only past rows. The supervised trees and Gaussian Naive Bayes use the original numeric features.
+I evaluated each model with test-then-train (prequential evaluation). For each row, I made a prediction using the model trained on earlier rows, recorded it, and then updated the model with the true target. Every row counts in the scores. If a model had no prediction yet, I used 0. I also calculated scores in blocks of 250 rows to see how performance changed over time. I replayed the same row order and used seed 42 where the code allowed a seed. The linear models and regression kNN used feature means and variances from past rows for standardization. The trees and Gaussian Naive Bayes used the original features.
 
 \subsection*{Cost and environment}
 
-\labenvironment{} Supervised baseline costs are componentwise medians of three sequential replays with fresh learners. CapyMOA gets a discarded 256-row warm-up per pair. Mean and p95 measure per-row prediction and update latency. Rare slow rows can raise the mean above p95. Wall time includes loop and instrumentation overhead. Imports, loading, feature preparation, learner setup and final metric aggregation are outside the timed loop.
+\labenvironment{} For each supervised baseline I started with a fresh model three times and took the median of each timing measurement. Before timing CapyMOA, I ran a separate 256-row warm-up for each model and dataset. I measured the mean and the 95th-percentile time for predicting and training on one row. A few slow updates can push the mean above the 95th percentile. The total time includes loop and measurement overhead. I timed the loop after preparing the data and setting up the model, and calculated the final scores afterward.
 
 The executable notebook and full results are in the \href{https://github.com/adamchgour/Lab-4-Online-Machine-Learning-on-Data-Stream}{Lab 4 GitHub repository}. An executed HTML export accompanies this report.
 
@@ -88,21 +88,21 @@ The executable notebook and full results are in the \href{https://github.com/ada
 \labpart{Part 1 \enspace/\enspace Steps 2--3}
 \section{River regression}
 
-\textbf{HT} grows a Hoeffding tree with mean leaves. \textbf{ARF} combines five resampled trees with mean leaves, median aggregation and internal ADWIN-based replacement. Leaves maintain target statistics and use variance reduction to score splits. Both trees use a 100-observation grace period. \textbf{AdaGrad} fits a linear predictor with initial coefficient rate 0.10 and intercept rate 0.05. It standardizes targets online and converts predictions back to the original units. \textbf{kNN} searches a 200-row window for five neighbors and averages their targets.
+The \textbf{Hoeffding tree (HT)} predicts the mean target at the leaf where a row ends up. The \textbf{adaptive random forest (ARF)} combines five trees trained on resampled rows and takes the median of their predictions. ADWIN can trigger replacement of a tree. Both models use variance reduction to score splits and check for a split after 100 new observations at a leaf. \textbf{AdaGrad} fits a linear model with initial rates of 0.10 for the coefficients and 0.05 for the intercept. It standardizes targets online and converts predictions back to the original units. \textbf{kNN} finds the five nearest rows in a window of 200 and averages their targets.
 
 \reporttable{regression}{Regression errors and cost.}
 
 \reportfigure[1]{regression}{MAE vs. mean cost. Each panel has its own score scale. Latency uses a logarithmic axis.}
 
-AdaGrad had the smallest mean latency on every regression stream. On Seoul bikes, kNN improved MAE from 171.00 to 169.41 rentals per hour at about $64\times$ the mean latency. AdaGrad also had the lowest appliance-energy MAE (33.15 Wh). Metro traffic made a stronger case for the forest. ARF reduced MAE from 520 to 420 vehicles per hour, about 19\%, at $34\times$ the mean latency.
+AdaGrad was the fastest on every regression dataset. On Seoul bikes, kNN lowered MAE from 171.00 to 169.41 rentals per hour and took about $64\times$ as long per row. AdaGrad also had the lowest MAE for appliance energy (33.15 Wh). On Metro traffic, the gain from ARF was larger. It lowered MAE from 520 to 420 vehicles per hour (about 19\%) and took about $34\times$ as long per row as AdaGrad.
 
 \clearpage
 \labpart{Part 1 \enspace/\enspace Step 4}
 \section{Regression drift detection}
 
-Friedman shift switches from the first five inputs to the last five and adds 12 to the target at row 5,001. The detectors use absolute HT errors divided by three times the target standard deviation from the first 100 rows and clipped at 1. ADWIN tests an adaptive window mean (\ensuremath{\delta}=0.002), Page--Hinkley accumulates upward deviations (threshold 25, \ensuremath{\delta}=0.005, minimum 30), and KSWIN compares empirical distributions (\ensuremath{\alpha}=0.005, window 100, reference size 30).
+At row 5,001 of the Friedman stream, the target switches from the first five features to the last five and increases by 12. I gave the detectors the tree's absolute error divided by three times the target standard deviation in the first 100 rows, capped at 1. ADWIN compares the means of two portions of an adaptive window (\ensuremath{\delta}=0.002). Page--Hinkley looks for a sustained increase in error (threshold 25, \ensuremath{\delta}=0.005, minimum 30). KSWIN compares empirical distributions in a window of 100 values (\ensuremath{\alpha}=0.005, reference size 30).
 
-From row 101, every detector runs in monitor-only and in reset mode. A reset replaces the tree after predicting the alarm row and trains the fresh tree on that row. Delay is measured from row 5,001 to the first alarm within the next 1,000 rows, including row 5,001.
+I started each detector at row 101. In monitor mode I recorded the alarms and kept training the same tree. In reset mode I scored the alarm row first and trained the new tree on that row. I measured delay as the number of rows from the known shift to the first alarm in rows 5,001 to 6,000.
 
 \reporttable{regressionDrift}{Synthetic results. Pairs show monitor / reset. Scores and latency use reset mode or the unmodified HT baseline.}
 
@@ -110,13 +110,13 @@ From row 101, every detector runs in monitor-only and in reset mode. A reset rep
 
 \reportfigure[1]{regression_drift}{Synthetic blocks of 250 rows. Vertical line marks the true shift. Alarm ticks denote monitor mode and dots denote reset mode.}
 
-On Friedman shift, KSWIN detected the change after 15 rows, with eight earlier alarms in monitor mode. Resetting with KSWIN cost about $5.4\times$ the baseline mean latency. Page--Hinkley detected the change after 43 rows and cut first-1,000 MAE from 10.79 to 3.55. On Seoul bikes, Page--Hinkley reset twice and improved MAE from 252.32 to 202.46. On Metro traffic, ADWIN and KSWIN resets more than doubled MAE. These replays show why alerting and automatic resetting need separate evaluation.
+KSWIN was quickest to detect the Friedman shift (15 rows). It also gave eight alarms before the change in monitor mode, and its reset run took about $5.4\times$ as long per row as the baseline. Page--Hinkley took 43 rows and lowered MAE from 10.79 to 3.55 over the first 1,000 rows after the shift. On Seoul bikes, its two resets lowered MAE from 252.32 to 202.46. On Metro traffic, resetting with ADWIN or KSWIN more than doubled MAE.
 
 \clearpage
 \labpart{Part 1 \enspace/\enspace Step 5}
 \section{River classification}
 
-\textbf{HT} follows the VFDT split rule (Barry, slides 29--32). Every 100 observations at a leaf, it can compare the two best information gains using the Hoeffding bound ($\delta=10^{-5}$) and a tie threshold of 0.05. Leaves predict the majority class. \textbf{ARF} uses five trees with random feature subsets and Poisson(6) resampling. An ADWIN warning starts a background tree. A drift alarm replaces the affected tree with its background tree if one is available (slides 47--50). \textbf{Logistic} fits log loss with AdaGrad at 0.05 and intercept rate 0.05. \textbf{GaussianNB} maintains class priors and per-class Gaussian feature statistics.
+The \textbf{Hoeffding tree (HT)} predicts the majority class at each leaf. After 100 new observations at a leaf, it checks whether the best split is sufficiently better than the next one in information gain. It uses the Hoeffding bound ($\delta=10^{-5}$) and a tie threshold of 0.05. \textbf{ARF} trains five trees using random feature subsets and Poisson(6) resampling. An ADWIN warning starts a background tree, which can replace the current tree when a drift alarm occurs. \textbf{Logistic regression} uses log loss with AdaGrad and an initial rate of 0.05 for both the coefficients and the intercept. \textbf{Gaussian Naive Bayes} updates the class frequencies and Gaussian feature statistics for each class.
 
 \reporttable{classification}{Classification quality and cost.}
 
@@ -128,9 +128,9 @@ The Hoeffding tree led on room occupancy (98.07\%). On EEG, ARF improved accurac
 \labpart{Part 1 \enspace/\enspace Step 5}
 \section{Classification drift detection}
 
-SEA uses a threshold of 8 on $x_1+x_2$ through row 5,000 and 13 thereafter, with 5\% independent label flips. The threshold changes $P(y\mid X)$ while the feature distribution stays fixed (Barry, slide 18). Detectors observe the HT's binary error. ADWIN compares older and recent window means ($\delta=0.002$). DDM sets thresholds using the historical minimum of the error rate plus its standard deviation (slide 19). EDDM uses distances between mistakes and HDDM-A uses Hoeffding bounds. The three binary detectors use River defaults.
+In SEA, the class depends on whether $x_1+x_2$ exceeds 8. At row 5,001 I raised the threshold to 13 and kept the same feature distribution. The stream has 5\% independent label flips. The detectors receive a 1 for a wrong prediction and a 0 for a correct one. ADWIN compares older and newer error rates ($\delta=0.002$). DDM compares the current error rate and its standard deviation with their lowest combined value so far. EDDM looks at the distance between errors, and HDDM-A uses a Hoeffding bound to detect increases in the error rate. I used River's defaults for DDM, EDDM and HDDM-A.
 
-From row 101, every detector runs in monitor-only and in reset mode. A reset replaces the tree after predicting the alarm row and trains the fresh tree on that row. Delay is measured from row 5,001 to the first alarm within the next 1,000 rows, including row 5,001.
+I started each detector at row 101. In monitor mode I recorded the alarms and kept training the same tree. In reset mode I scored the alarm row first and trained the new tree on that row. I measured delay as the number of rows from the known shift to the first alarm in rows 5,001 to 6,000.
 
 \reporttable{classificationDrift}{Synthetic results. Pairs show monitor / reset. Scores and latency use reset mode or the unmodified HT baseline.}
 
@@ -138,19 +138,19 @@ From row 101, every detector runs in monitor-only and in reset mode. A reset rep
 
 \reportfigure[1]{classification_drift}{Synthetic blocks of 250 rows. Vertical line marks the true shift. Alarm ticks denote monitor mode and dots denote reset mode.}
 
-On SEA, HDDM-A detected the shift after 47 rows and improved accuracy from 77.86\% to 80.72\%. ADWIN improved early recovery but reduced full-stream accuracy to 70.71\%. In the EEG replay, DDM resets raised the standalone tree's accuracy from 58.52\% to 99.78\%. Adjacent labels agree in 99.85\% of pairs in this single recording. The result describes adaptation within that recording under immediate label feedback.
+On SEA, HDDM-A detected the shift after 47 rows. With resets, accuracy rose from 77.86\% to 80.72\%. ADWIN helped over the first 1,000 rows after the shift, but overall accuracy fell to 70.71\%. On EEG, DDM resets raised accuracy from 58.52\% to 99.78\%. In this recording, 99.85\% of consecutive rows have the same label. The high score is for online prediction within that recording, with the true label available after each prediction.
 
 \clearpage
 \labpart{Part 2 \enspace/\enspace Steps 7--8}
 \section{River versus CapyMOA}
 
-Four pairs use the same ordered inputs, scoring, seed and learner family. HT and ARF align the split settings and majority leaves. ARF also aligns five trees, $\mathrm{round}(\sqrt{d})$ candidate features out of $d$, Poisson(6) bagging, ADWIN drifts (\ensuremath{\delta}=0.001) and warnings (\ensuremath{\delta}=0.01) with one worker. Numeric observers, tie handling and implementation details can still differ.
+I used the same rows, order, seed and metrics for the four model pairs. For HT and ARF, I matched the main split settings and used majority-class leaves. Both forests used five trees, Poisson(6) resampling and one worker. Each split considered $\mathrm{round}(\sqrt{d})$ of the $d$ features. I used ADWIN with $\delta=0.001$ for drift alarms and $\delta=0.01$ for warnings. The libraries can still differ in how they summarize numeric features and choose splits.
 
 \reporttable{libraries}{End-to-end loop wall time and mean per-row latency. The notebook gives p95 latency, macro F1 and kappa for each library.}
 
 \reportfigure[1]{cross_library}{Positive values favor CapyMOA on accuracy. Values right of 1 favor CapyMOA on latency. The x-axis is logarithmic.}
 
-\libraryfindings{} Logistic compares AdaGrad in River with a log-loss scikit-learn SGD wrapper in CapyMOA (initial rate 0.05, inverse scaling and L2 by default). This pair differs in both optimizer and wrapper.
+\libraryfindings{} River used AdaGrad, while CapyMOA used scikit-learn SGD with log loss, an initial learning rate of 0.05, inverse scaling and L2 regularization.
 
 \librarymemory{} River runs first, before the JVM starts. Sampled notebook-process memory includes inputs, timing arrays and allocations retained across runs. CapyMOA measurements also include the JVM. Sampling every 250 rows can miss transient peaks.
 
@@ -160,7 +160,7 @@ Four pairs use the same ordered inputs, scoring, seed and learner family. HT and
 
 The real stream consists of the first 6,000 occupancy records, represented by light in units of 100 lux and CO$_2$ in units of 250 ppm. The other stream is a 6,000-row simulation of three 2D Gaussian groups ($\sigma=0.30$) moving at row 3,001. CluStream keeps up to 30 micro-clusters with horizon 750. Its K-means summaries use $k=2$ for the room sensors and $k=3$ for the simulation. DenStream uses a 750 horizon, \ensuremath{\varepsilon}=0.55, \ensuremath{\beta}=0.20, \ensuremath{\mu}=2, 300 initialization points and density decay \ensuremath{\lambda}=0.25. ClusTree uses horizon 750 and height 5, returning its micro-clusters.
 
-Give each clusterer features and a constant dummy class. Before training a 250-row block, assign its points to the nearest center from the previous snapshot. Use occupancy labels or simulated groups only for adjusted Rand index (ARI). Skip blocks before the first nonempty snapshot.
+I passed the features and a constant dummy class to the clustering API. For each block of 250 rows, I assigned each point to the closest center from the previous block before updating the models. I used the occupancy labels or simulated group IDs to calculate the adjusted Rand index (ARI). Scoring started once the model had a center to use.
 
 \reporttable{clustering}{ARI is 1 for identical partitions, with 0 representing chance agreement in expectation. Shift ARI is the score for the first block after the shift. Centers are counted at the end. Training latency excludes snapshots.}
 
@@ -174,35 +174,35 @@ On room sensors, CluStream had mean ARI 0.807 and took about 24~\ensuremath{\mu}
 \labpart{Part 2 \enspace/\enspace Step 10}
 \section{Online model selection}
 
-Use the 10,000-row SEA shift again. Compare each selection policy with single Hoeffding Tree (HT) and Hoeffding Adaptive Tree (HAT) baselines at grace period 100. HAT uses ADWIN to detect deteriorating branches and evaluate alternate subtrees (Barry, slide 38).
+I reused the 10,000-row SEA stream to compare CapyMOA's model selection methods. The baselines were a Hoeffding tree (HT) and a Hoeffding adaptive tree (HAT), both with a grace period of 100. HAT uses ADWIN to check for deteriorating branches and can grow and test a replacement subtree.
 
 \textbf{Bandit.} Epsilon-greedy selection with \ensuremath{\varepsilon}=0.15 and burn-in 300 bandit pulls. Candidates are HT and HAT, each with grace periods 50, 100 and 200.
 
-\textbf{Successive halving.} Same six candidates. Remove low-scoring models at each rung with \ensuremath{\eta}=2, a selection budget of 10,000 candidate updates and a minimum of one survivor.
+\textbf{Successive halving.} I used the same six candidates. The method removes lower-scoring candidates in stages with \ensuremath{\eta}=2, a budget of 10,000 candidate updates and at least one survivor.
 
-\textbf{AutoClass.} Periodically resample HT and HAT configurations. Start at grace 100 and confidence 0.001 with search ranges 50--200 and $10^{-5}$--$10^{-2}$. Use a 500-row evaluation window, ensemble size 5 and three new configurations per cycle.
+\textbf{AutoClass.} This method periodically samples new HT and HAT configurations. The starting grace period was 100 and the confidence setting was 0.001, with search ranges of 50--200 and $10^{-5}$--$10^{-2}$. I used a 500-row evaluation window, an ensemble of five models and three new configurations per cycle.
 
 \reporttable{automl}{Bonus experiment. One prequential run per method. Post-1k starts at row 5,001.}
 
 \reportfigure[1]{automl}{Accuracy by 250-row block. The dotted line is the true shift. The HT and HAT curves are the fixed-configuration baselines.}
 
-AutoClass had the highest accuracy (90.55\%), 1.21 pp above the fixed HAT, with about $3.0\times$ its wall time. Successive halving nearly matched HAT accuracy with far higher cost and tail latency. The bandit did poorly immediately after drift, when its historical rewards could favor a learner suited to the earlier regime. Fixed HAT is the economical starting point for this stream and candidate space.
+AutoClass reached 90.55\% accuracy, 1.21 percentage points above the fixed HAT, and took about three times as long. Successive halving was close to HAT in accuracy and much slower. Bandit accuracy fell in the first 1,000 rows after the shift. One possible reason is that models that worked well before the shift still had high estimated rewards. On this stream I would start with the fixed HAT.
 
 \clearpage
 \labpart{Conclusion}
 \section{Choosing a streaming method}
 
-\textbf{Start with an adaptive linear learner when throughput matters.} River's AdaGrad models had the lowest mean latency on every stream in the two River comparisons. Use the nonlinear alternatives when the score improvement on the target stream justifies the measured latency. For Seoul bikes, kNN's small error improvement came at substantial cost. The traffic results gave a stronger case for paying for ARF.
+I would start with an AdaGrad linear model if processing time is the main constraint. These models had the lowest mean latency in River. I would use the forest on a stream like Metro traffic if the reduction in forecast error justified the extra time per row.
 
-\textbf{Use selective adaptation when a model must recover quickly.} ARF offers an ensemble trade-off on the known synthetic shifts. For an external alerting policy, Page--Hinkley was effective on the abrupt regression loss increase and HDDM-A gave the best SEA reset result. Where labels arrive frequently and alarm ground truth is unavailable, validate the recovery effect on historical replay before enabling automatic resets.
+If I needed drift alarms, I would start with Page--Hinkley for a jump in regression error like the Friedman shift and HDDM-A for a change like the one in SEA. Before turning on resets for real data, I would test on a past stream and check whether the resets help. On Metro traffic, some resets increased the error substantially.
 
-\textbf{Match the library to the learner and deployment.} River makes it straightforward to insert online preprocessing or a detector in a per-sample pipeline. CapyMOA offers MOA classifiers, a streaming clustering API and automated selection. Its classifier costs depend on the algorithm, JVM and adapter. A Python callback loop and MOA's optimized evaluation path represent different deployment choices.
+I would use River for an online model that needs feature scaling or a custom drift detector in the same Python loop. I would use CapyMOA for the MOA classifiers or for stream clustering. The measured speed depended on the classifier, so I would compare the particular models I planned to use.
 
-\textbf{Choose clustering granularity and selection effort deliberately.} CluStream gave the strongest overall agreement when the expected number of groups was known. DenStream recovered the moving groups without a fixed k but depended on the chosen density scale. ClusTree can provide summaries for a separate macro-clustering step. For SEA, the fixed HAT was a strong default before paying for online hyperparameter searches.
+For clustering, I would use CluStream when I know how many groups to look for. It had the highest mean ARI on both streams. I would try DenStream when the number of groups is unknown, testing the density settings on data from the application. For model selection, AutoClass gave a small increase in accuracy on SEA. I would run it if that gain mattered enough to try more configurations.
 
 \subsection*{Limitations}
 
-The synthetic streams use a fixed seed and Metro traffic uses a prefix. Repeated timings measure execution variability on identical streams. AutoClass accuracy varied between runs even with its seed set. The synthetic streams have known change points. The real streams have no labeled change points. Gas sensor batches preserve long-term order but do not provide exact observation timestamps. The observations assume immediate labels and available contemporaneous features. Runtime excludes JVM startup and cannot isolate its contribution to memory use. Results are specific to these versions and settings.
+I tested one seed for the synthetic streams and used a subset of Metro traffic. AutoClass accuracy varied between runs even with its seed set. The real datasets give no exact drift times, so I could only measure delay on the synthetic data. The gas sensor data give batch order but no exact times for individual rows. The supervised evaluation assumes that a true label is available after each prediction. Timing excludes JVM startup, and the memory measurements cover the whole notebook process.
 
 \subsection*{References and reproducibility}
 
