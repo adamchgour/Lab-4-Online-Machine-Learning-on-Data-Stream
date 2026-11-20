@@ -222,7 +222,7 @@ def save_environment():
         {"item": "Platform", "value": f"{platform.system()} {platform.mac_ver()[0]} {platform.machine()}"},
         {"item": "Java", "value": java.stderr.splitlines()[0]},
         *({"item": module, "value": version(module)}
-          for module in ("river", "capymoa", "numpy", "pandas", "scikit-learn", "matplotlib", "jpype1", "scipy", "psutil", "reportlab")),
+          for module in ("river", "capymoa", "numpy", "pandas", "scikit-learn", "matplotlib", "jpype1", "scipy", "psutil")),
     ])
 
 

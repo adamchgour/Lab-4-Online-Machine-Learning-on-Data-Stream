@@ -2,13 +2,13 @@
 
 Adam Chgour · M2 Data Science · Institut Polytechnique de Paris
 
-- [PDF report](output/pdf/lab-4-online-machine-learning.pdf) — setup, results, interpretation and conclusions
+- [PDF report](output/pdf/lab-4-online-machine-learning.pdf) · [LaTeX source](report.tex) — setup, results, interpretation and conclusions
 - [Executed notebook](Lab_4.ipynb) · [HTML export](Lab_4.html) — tables, figures and reproduction commands
 - [Measured results](results/) · [Figures](figures/)
 
 ## Reproduce the experiments
 
-Use Python 3.12 and a JDK. The archived run used Python 3.12.7 and OpenJDK 17.0.14 on an Apple M2 with 16 GB RAM. See [environment.csv](results/environment.csv) for the measured versions. The experiments use CapyMOA’s CPU and Java methods.
+Use Python 3.12, a JDK and Tectonic on your PATH. The archived run used Python 3.12.7 and OpenJDK 17.0.14 on an Apple M2 with 16 GB RAM. See [environment.csv](results/environment.csv) for the measured versions. The experiments use CapyMOA’s CPU and Java methods.
 
 ```bash
 python3.12 -m venv .venv
@@ -21,6 +21,10 @@ java -version
 If several JDKs are installed, set `JAVA_HOME` to the JDK CapyMOA should use. River downloads Elec2 on its first use. You can set `RIVER_DATA` to choose the cache directory. The library loaders provide the real datasets. [streams.py](streams.py) generates the synthetic streams.
 
 The shell script runs each stage in a fresh process, then builds the figures, PDF, notebook and HTML. Run a stage individually with `python benchmark.py STAGE`, where `STAGE` is `environment`, `regression`, `classification`, `capymoa`, `clustering` or `automl`. Timings vary with hardware and system load. The AutoML stage took about a minute on the reference machine.
+
+## Compile the report
+
+`report.tex` contains the report text and layout. Run `python build_report.py` from the repository root with the Python dependencies installed to regenerate `report-tables.tex` from the archived CSVs and compile the PDF using Tectonic. This uses the existing figures and requires no experiment rerun. Tectonic may fetch its TeX bundle on the first compile.
 
 ## Experimental design
 

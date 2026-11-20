@@ -1,0 +1,221 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=19mm,headheight=14pt,footskip=27pt]{geometry}
+\usepackage{amsmath,booktabs,tabularx,graphicx,caption,fancyhdr,xcolor}
+\usepackage{microtype}
+\definecolor{linkblue}{HTML}{245474}
+\usepackage[colorlinks=true,urlcolor=linkblue,linkcolor=linkblue,
+  pdftitle={Online machine learning with River and CapyMOA},
+  pdfauthor={Adam Chgour}]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{1em}
+\captionsetup{font=small,labelfont=bf,skip=5pt,justification=raggedright,singlelinecheck=false}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Data Stream Processing}
+\fancyhead[R]{\small Lab 4}
+\fancyfoot[L]{\small Adam Chgour}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.35pt}
+
+\newcommand{\labpart}[1]{{\small\scshape #1\par}\nobreak}
+\newcommand{\reporttable}[2]{%
+  \par\addvspace{4pt}%
+  \noindent\begin{minipage}{\linewidth}
+    \small
+    \setlength{\tabcolsep}{4pt}%
+    \renewcommand{\arraystretch}{1.06}%
+    \noindent\csname reportdata@#1\endcsname
+    \captionof{table}{#2}
+  \end{minipage}\par
+}
+\newcommand{\reportfigure}[3][1]{%
+  \par\addvspace{3pt}%
+  \noindent\begin{minipage}{\linewidth}
+    \centering\includegraphics[width=#1\linewidth]{figures/#2.png}
+    \captionof{figure}{#3}
+  \end{minipage}\par
+}
+\input{report-tables.tex}
+
+\expandafter\newcommand\csname reportdata@streams\endcsname{%
+  \begin{tabularx}{\linewidth}{@{}llrrX@{}}
+  \toprule
+  \textbf{Task} & \textbf{Stream} & \textbf{Rows} & \textbf{Features} & \textbf{Target and ordering} \\
+  \midrule
+  Regression & Trump Approval & 1,001 & 6 & Approval estimate from poll ratings and date \\
+   & Chick Weights & 578 & 3 & Chick weight, ordered by time then chick \\
+   & Diabetes & 442 & 10 & Disease progression, source row order \\
+   & Friedman shift & 10,000 & 10 & Change in active features and target mean \\
+  \addlinespace
+  Classification & Elec2 & 15,000 & 8 & Price direction, first 15,000 ordered rows \\
+   & Phishing & 1,250 & 9 & Phishing indicator, source row order \\
+   & Breast Cancer & 569 & 30 & Benign or malignant, source row order \\
+   & SEA shift & 10,000 & 3 & Threshold change with label noise \\
+  \bottomrule
+  \end{tabularx}%
+}
+
+\begin{document}
+\labpart{Institut Polytechnique de Paris}
+
+{\Huge\bfseries Online machine learning\\with River and CapyMOA\par}\vspace{.9em}
+
+\textbf{Lab 4}  /  Adam Chgour  /  19 November 2026
+
+This study compares incremental learners and drift responses using ordered data streams. River covers regression, classification and drift detection. CapyMOA provides a second implementation for classification and extends the study to unsupervised clustering and AutoML.
+
+\subsection*{Streams}
+
+\reporttable{streams}{Six real streams and two seeded synthetic supervised streams. River supplies Trump Approval, Chick Weights, Elec2 and Phishing. Scikit-learn supplies unscaled Diabetes and Breast Cancer.}
+
+\subsection*{Evaluation protocol}
+
+Predict with the state available at $t-1$, score against the observed target, then train on row $t$. All rows count, with 0 used when a learner abstains at startup. Preserve source order and use seed 42 wherever configurable. For linear learners and regression kNN, each feature vector is standardized using only past rows. Other learners receive the same raw numeric features.
+
+\subsection*{Cost and environment}
+
+\labenvironment{} Supervised baseline costs are componentwise medians of three sequential replays with fresh learners. CapyMOA gets a discarded 256-row warm-up per pair. Mean and p95 are per-row predict-plus-update latency. Wall time includes loop and instrumentation overhead. Imports, loading, feature preparation, learner setup and final metric aggregation are outside the timed loop.
+
+Source code, exact configurations, notebook and raw results are in the \href{https://github.com/adamchgour/Lab-4-Online-Machine-Learning-on-Data-Stream}{GitHub repository}.
+
+\clearpage
+\labpart{Part 1 \enspace/\enspace Steps 2--3}
+\section{River regression}
+
+\textbf{HT} grows a Hoeffding tree with mean leaves. \textbf{ARF} combines five resampled trees with mean leaves, median aggregation and internal ADWIN-based replacement. Both trees use a 100-observation grace period. \textbf{AdaGrad} fits a linear predictor with initial coefficient rate 0.10 and intercept rate 0.05. \textbf{kNN} searches a 200-row window for five neighbors and averages their targets.
+
+\reporttable{regression}{Regression errors and cost.}
+
+\reportfigure[1]{regression}{MAE vs. mean cost. Each panel has its own score scale. Latency uses a logarithmic axis.}
+
+On Friedman shift, ARF attained MAE 2.711 versus 2.846 for AdaGrad, at about $36\times$ the mean latency. AdaGrad also had the lowest Chick Weights MAE, while kNN reduced RMSE from 37.63 to 35.36. On Diabetes and Trump Approval, kNN had the lowest MAE but the highest mean latency. RMSE highlights the cost of early large misses, especially for the Trump Approval linear fit.
+
+\clearpage
+\labpart{Part 1 \enspace/\enspace Step 4}
+\section{Regression drift detection}
+
+Friedman shift switches from the first five inputs to the last five and adds 12 to the target at row 5,001. The detectors use absolute HT errors divided by three times the target standard deviation from the first 100 rows and clipped at 1. ADWIN tests an adaptive window mean (\ensuremath{\delta}=0.002), Page--Hinkley accumulates upward deviations (threshold 25, \ensuremath{\delta}=0.005, minimum 30), and KSWIN compares empirical distributions (\ensuremath{\alpha}=0.005, window 100, reference size 30).
+
+From row 101, every detector runs in monitor-only and in reset mode. A reset replaces the tree after predicting the alarm row and trains the fresh tree on that row. Delay is measured from row 5,001 to the first alarm within the next 1,000 rows, including row 5,001.
+
+\reporttable{regressionDrift}{Synthetic results. Pairs show monitor / reset. Scores and latency use reset mode or the unmodified HT baseline.}
+
+\reporttable{regressionReal}{Real-stream counts show monitor/reset alarms and change from baseline under reset (MAE). Alarm positions are in the CSVs. Real streams lack labeled change points.}
+
+\reportfigure[1]{regression_drift}{Synthetic blocks of 250 rows. Vertical line marks the true shift. Alarm ticks denote monitor mode and dots denote reset mode.}
+
+KSWIN's 15-row alarm was earliest, with eight pre-change alarms in monitor-only mode and about $5\times$ the baseline HT mean latency under reset. Page--Hinkley sounded once at +43 and reduced the first-1,000 MAE from 10.79 to 3.55. ADWIN fired later in closed loop (+59 vs +27), illustrating how earlier resets alter future errors. Diabetes shows the cost of a reset without a corresponding predictive benefit.
+
+\clearpage
+\labpart{Part 1 \enspace/\enspace Step 5}
+\section{River classification}
+
+\textbf{HT} uses information gain, majority leaves, grace 100, split confidence $10^{-5}$ and tie threshold 0.05. \textbf{ARF} uses five matching base trees with square-root feature sampling and Poisson(6) resampling. \textbf{Logistic} fits log loss with AdaGrad at 0.05 and intercept rate 0.05. \textbf{GaussianNB} maintains class priors and per-class Gaussian feature statistics.
+
+\reporttable{classification}{Classification quality and cost.}
+
+\reportfigure[1]{classification}{Accuracy vs. mean cost. Each panel has its own score scale. Latency uses a logarithmic axis.}
+
+Logistic had the highest accuracy on all three real datasets and the lowest mean latency on every stream. On SEA shift, ARF improved accuracy by 0.49 percentage points over Logistic at roughly $30\times$ the mean latency. Macro F1 and Cohen's kappa gave the same model ranking on each of the four streams.
+
+\clearpage
+\labpart{Part 1 \enspace/\enspace Step 5}
+\section{Classification drift detection}
+
+SEA uses a threshold of 8 on $x_1+x_2$ through row 5,000 and 13 thereafter, with 5\% independent label flips. Detectors observe the HT's binary error. ADWIN compares adaptive window means (\ensuremath{\delta}=0.002), DDM tracks error-rate significance, EDDM monitors distances between mistakes, and HDDM-A compares means using Hoeffding bounds. DDM, EDDM and HDDM-A use River defaults.
+
+From row 101, every detector runs in monitor-only and in reset mode. A reset replaces the tree after predicting the alarm row and trains the fresh tree on that row. Delay is measured from row 5,001 to the first alarm within the next 1,000 rows, including row 5,001.
+
+\reporttable{classificationDrift}{Synthetic results. Pairs show monitor / reset. Scores and latency use reset mode or the unmodified HT baseline.}
+
+\reporttable{classificationReal}{Real-stream counts show monitor/reset alarms and change from baseline under reset (accuracy). Alarm positions are in the CSVs. Real streams lack labeled change points.}
+
+\reportfigure[1]{classification_drift}{Synthetic blocks of 250 rows. Vertical line marks the true shift. Alarm ticks denote monitor mode and dots denote reset mode.}
+
+HDDM-A detected SEA's shift at +47 with no pre-change alarms and improved accuracy from 77.86\% to 80.72\%. ADWIN lifted early recovery to 70.9\% yet reduced overall accuracy to 70.71\%. On Elec2, every reset policy lost accuracy. EDDM and HDDM-A generated over 160 closed-loop alarms each, consistent with resets inducing more error changes. A detector's sensitivity and a learner's recovery need separate tests.
+
+\clearpage
+\labpart{Part 2 \enspace/\enspace Steps 7--8}
+\section{River versus CapyMOA}
+
+Four pairs use the same ordered inputs, scoring, seed and learner family. HT and ARF align the split settings and majority leaves. ARF also aligns five trees, square-root feature count, Poisson(6) bagging, ADWIN drifts (\ensuremath{\delta}=0.001) and warnings (\ensuremath{\delta}=0.01) with one worker. Numeric observers, tie handling and implementation details can still differ.
+
+\reporttable{libraries}{End-to-end loop wall time and mean per-row latency. p95 latency, macro F1 and kappa are included in the per-library CSVs.}
+
+\reportfigure[1]{cross_library}{Positive values favor CapyMOA on accuracy. Values right of 1 favor CapyMOA on latency. The x-axis is logarithmic.}
+
+\libraryfindings{} Logistic compares AdaGrad in River with a log-loss scikit-learn SGD wrapper in CapyMOA (initial rate 0.05, inverse scaling and L2 by default). Its gap combines optimizer and wrapper effects.
+
+\librarymemory{} These process measurements include input buffers, retained allocations and the JVM where applicable. Sampling every 250 rows can miss transient peaks.
+
+\clearpage
+\labpart{Part 2 \enspace/\enspace Step 9}
+\section{Clustering evolving streams}
+
+Two 6,000-row Gaussian streams have three groups in 2D (\ensuremath{\sigma}=0.30). Centers in one stream move abruptly at row 3,001. CluStream uses 30 micro-clusters, horizon 750 and K-means with k=3. DenStream uses a 750 horizon, \ensuremath{\varepsilon}=0.55, \ensuremath{\beta}=0.20, \ensuremath{\mu}=2, 300 initialization points and density decay \ensuremath{\lambda}=0.25. ClusTree uses horizon 750 and height 5, returning its micro-clusters.
+
+Give each clusterer features and a constant dummy class. Before training a 250-row block, assign its points to the nearest center from the previous snapshot. Use hidden groups only for adjusted Rand index (ARI). Skip blocks before the first nonempty snapshot.
+
+\reporttable{clustering}{ARI is 1 for identical partitions, with 0 representing chance agreement in expectation. Train latency excludes snapshots. Wall time, snapshot cost and nearest-center distance are in the CSVs.}
+
+\reportfigure[.91]{clustering}{ARI on each new block. The dotted line marks the center shift.}
+
+\reportfigure[.90]{cluster_centers}{Cluster centers at three snapshots of the moving stream. ClusTree reports microsummaries while CluStream and DenStream report macro-clusters.}
+
+CluStream gave the strongest mean ARI on both streams. DenStream merged two stationary groups with these settings, yet separated all three after the move and achieved a final four-block ARI of 1.000. ClusTree retained 154 micro-centers on the stationary stream. Its low ARI partly reflects fragmentation from scoring micro-centers as final groups.
+
+\clearpage
+\labpart{Part 2 \enspace/\enspace Step 10}
+\section{Online model selection}
+
+Use the 10,000-row SEA shift again. Compare each selection policy with single Hoeffding Tree (HT) and Hoeffding Adaptive Tree (HAT) baselines at grace period 100. HAT monitors its branches with drift detectors and can replace them.
+
+\textbf{Bandit.} Epsilon-greedy selection with \ensuremath{\varepsilon}=0.15 and burn-in 300 bandit pulls. Candidates are HT and HAT, each with grace periods 50, 100 and 200.
+
+\textbf{Successive halving.} Same six candidates. Remove low-scoring models at each rung with \ensuremath{\eta}=2, a selection budget of 10,000 candidate updates and a minimum of one survivor.
+
+\textbf{AutoClass.} Periodically resample HT and HAT configurations. Start at grace 100 and confidence 0.001 with search ranges 50--200 and $10^{-5}$--$10^{-2}$. Use a 500-row evaluation window, ensemble size 5 and three new configurations per cycle.
+
+\reporttable{automl}{Bonus experiment. One prequential run per method. Post-1k starts at row 5,001.}
+
+\reportfigure[1]{automl}{Accuracy by 250-row block. The dotted line is the true shift. The HT and HAT curves are the fixed-configuration baselines.}
+
+AutoClass had the highest accuracy (89.92\%), 0.58 pp above the fixed HAT, with more than twice its wall time. Successive halving nearly matched HAT accuracy with far higher cost and tail latency. The bandit did poorly immediately after drift, when its historical rewards could favor a learner suited to the earlier regime. Fixed HAT is the economical starting point for this stream and candidate space.
+
+\clearpage
+\labpart{Conclusion}
+\section{Choosing a streaming method}
+
+\textbf{Start with an adaptive linear learner when throughput matters.} River's AdaGrad models were the lowest-cost members of both supervised comparisons. Use the nonlinear alternatives when the score improvement on the target stream justifies the measured latency. A bounded kNN window can help on local regression problems such as Diabetes and Trump Approval.
+
+\textbf{Use selective adaptation when a model must recover quickly.} ARF offers an ensemble trade-off on the known synthetic shifts. For an external alerting policy, Page--Hinkley was effective on the abrupt regression loss increase and HDDM-A gave the best SEA reset result. Where labels arrive frequently and alarm ground truth is unavailable, validate the recovery effect on historical replay before enabling automatic resets.
+
+\textbf{Match the library to the learner and deployment.} River makes it straightforward to insert online preprocessing or a detector in a per-sample pipeline. CapyMOA offers MOA classifiers, a streaming clustering API and automated selection. Its classifier costs depend on the algorithm, JVM and adapter. A Python callback loop and MOA's optimized evaluation path represent different deployment choices.
+
+\textbf{Choose clustering granularity and selection effort deliberately.} CluStream was most consistent when the expected number of groups was three. DenStream recovered the moving groups without a fixed k but depended on the chosen density scale. ClusTree can provide summaries for a separate macro-clustering step. For SEA, the fixed HAT was a strong default before paying for online hyperparameter searches.
+
+\subsection*{Limitations}
+
+The long streams use a fixed seed and Elec2 uses a prefix. Repeated timings measure execution variability on identical streams. They do not give predictive confidence intervals. Only abrupt supervised drifts have known change points here. Static benchmark rows retain their dataset order, which can create order effects. The observations assume immediate labels and available contemporaneous features. Runtime excludes JVM startup and cannot isolate its contribution to memory use. Results are specific to these versions and settings.
+
+\subsection*{References and reproducibility}
+
+{\small \href{https://riverml.xyz/0.23.0/}{River 0.23.0 documentation and dataset reference}\par}
+
+{\small \href{https://capymoa.org/}{CapyMOA documentation}\par}
+
+{\small \href{https://capymoa.org/notebooks/clusterer/clustering.html}{CapyMOA clustering tutorial}\par}
+
+{\small \href{https://capymoa.org/notebooks/automl/automl.html}{CapyMOA AutoML tutorial}\par}
+
+{\small \href{https://arxiv.org/abs/2502.07432}{Gomes et al. CapyMOA paper (arXiv:2502.07432)}\par}
+
+{\small \href{https://scikit-learn.org/stable/datasets/toy_dataset.html}{Scikit-learn toy dataset reference}\par}
+
+\href{https://github.com/adamchgour/Lab-4-Online-Machine-Learning-on-Data-Stream}{Lab repository} with pinned dependencies, experiment scripts, measured CSVs and figure sources.
+
+\end{document}
