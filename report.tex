@@ -64,7 +64,7 @@
 
 {\Huge\bfseries Online machine learning\\with River and CapyMOA\par}\vspace{.9em}
 
-\textbf{Lab 4}  /  Adam Chgour  /  19 November 2026
+\textbf{Lab 4}  /  Adam Chgour  /  20 November 2026
 
 This study compares incremental learners and drift responses using ordered data streams. River covers regression, classification and drift detection. CapyMOA provides a second implementation for classification and extends the study to unsupervised clustering and AutoML.
 
@@ -74,7 +74,7 @@ This study compares incremental learners and drift responses using ordered data 
 
 \subsection*{Evaluation protocol}
 
-Predict with the state available at $t-1$, score against the observed target, then train on row $t$. All rows count, with 0 used when a learner abstains at startup. Preserve source order and use seed 42 wherever configurable. For linear learners and regression kNN, each feature vector is standardized using only past rows. Other learners receive the same raw numeric features.
+The prequential protocol follows Barry (slide 17). Predict with the model at $t-1$, score against the revealed target, and train on row $t$. All rows count, with 0 used when a learner abstains at startup. Whole-stream scores summarize the replay, while 250-row block scores show local changes in performance. Preserve source order and use seed 42 wherever configurable. For linear learners and regression kNN, each feature vector is standardized using only past rows. Other learners receive the same raw numeric features.
 
 \subsection*{Cost and environment}
 
@@ -86,7 +86,7 @@ Source code, exact configurations, notebook and raw results are in the \href{htt
 \labpart{Part 1 \enspace/\enspace Steps 2--3}
 \section{River regression}
 
-\textbf{HT} grows a Hoeffding tree with mean leaves. \textbf{ARF} combines five resampled trees with mean leaves, median aggregation and internal ADWIN-based replacement. Both trees use a 100-observation grace period. \textbf{AdaGrad} fits a linear predictor with initial coefficient rate 0.10 and intercept rate 0.05. \textbf{kNN} searches a 200-row window for five neighbors and averages their targets.
+\textbf{HT} grows a Hoeffding tree with mean leaves. \textbf{ARF} combines five resampled trees with mean leaves, median aggregation and internal ADWIN-based replacement. Leaves maintain target statistics and use variance reduction to score splits. Both trees use a 100-observation grace period. \textbf{AdaGrad} fits a linear predictor with initial coefficient rate 0.10 and intercept rate 0.05. \textbf{kNN} searches a 200-row window for five neighbors and averages their targets.
 
 \reporttable{regression}{Regression errors and cost.}
 
@@ -114,7 +114,7 @@ KSWIN's 15-row alarm was earliest, with eight pre-change alarms in monitor-only 
 \labpart{Part 1 \enspace/\enspace Step 5}
 \section{River classification}
 
-\textbf{HT} uses information gain, majority leaves, grace 100, split confidence $10^{-5}$ and tie threshold 0.05. \textbf{ARF} uses five matching base trees with square-root feature sampling and Poisson(6) resampling. \textbf{Logistic} fits log loss with AdaGrad at 0.05 and intercept rate 0.05. \textbf{GaussianNB} maintains class priors and per-class Gaussian feature statistics.
+\textbf{HT} follows the VFDT split rule (Barry, slides 29--32). Every 100 observations at a leaf, it can compare the two best information gains using the Hoeffding bound ($\delta=10^{-5}$) and a tie threshold of 0.05. Leaves predict the majority class. \textbf{ARF} uses five trees with random feature subsets and Poisson(6) resampling. An ADWIN warning starts a background tree. A drift alarm replaces the affected tree with its background tree if one is available (slides 47--50). \textbf{Logistic} fits log loss with AdaGrad at 0.05 and intercept rate 0.05. \textbf{GaussianNB} maintains class priors and per-class Gaussian feature statistics.
 
 \reporttable{classification}{Classification quality and cost.}
 
@@ -126,7 +126,7 @@ Logistic had the highest accuracy on all three real datasets and the lowest mean
 \labpart{Part 1 \enspace/\enspace Step 5}
 \section{Classification drift detection}
 
-SEA uses a threshold of 8 on $x_1+x_2$ through row 5,000 and 13 thereafter, with 5\% independent label flips. Detectors observe the HT's binary error. ADWIN compares adaptive window means (\ensuremath{\delta}=0.002), DDM tracks error-rate significance, EDDM monitors distances between mistakes, and HDDM-A compares means using Hoeffding bounds. DDM, EDDM and HDDM-A use River defaults.
+SEA uses a threshold of 8 on $x_1+x_2$ through row 5,000 and 13 thereafter, with 5\% independent label flips. The threshold changes $P(y\mid X)$ while the feature distribution stays fixed (Barry, slide 18). Detectors observe the HT's binary error. ADWIN compares older and recent window means ($\delta=0.002$). DDM tracks the error rate and its standard deviation against their historical minimum (slide 19). EDDM uses distances between mistakes and HDDM-A uses Hoeffding bounds. The three binary detectors use River defaults.
 
 From row 101, every detector runs in monitor-only and in reset mode. A reset replaces the tree after predicting the alarm row and trains the fresh tree on that row. Delay is measured from row 5,001 to the first alarm within the next 1,000 rows, including row 5,001.
 
@@ -142,7 +142,7 @@ HDDM-A detected SEA's shift at +47 with no pre-change alarms and improved accura
 \labpart{Part 2 \enspace/\enspace Steps 7--8}
 \section{River versus CapyMOA}
 
-Four pairs use the same ordered inputs, scoring, seed and learner family. HT and ARF align the split settings and majority leaves. ARF also aligns five trees, square-root feature count, Poisson(6) bagging, ADWIN drifts (\ensuremath{\delta}=0.001) and warnings (\ensuremath{\delta}=0.01) with one worker. Numeric observers, tie handling and implementation details can still differ.
+Four pairs use the same ordered inputs, scoring, seed and learner family. HT and ARF align the split settings and majority leaves. ARF also aligns five trees, $\mathrm{round}(\sqrt{d})$ candidate features out of $d$, Poisson(6) bagging, ADWIN drifts (\ensuremath{\delta}=0.001) and warnings (\ensuremath{\delta}=0.01) with one worker. Numeric observers, tie handling and implementation details can still differ.
 
 \reporttable{libraries}{End-to-end loop wall time and mean per-row latency. p95 latency, macro F1 and kappa are included in the per-library CSVs.}
 
@@ -150,7 +150,7 @@ Four pairs use the same ordered inputs, scoring, seed and learner family. HT and
 
 \libraryfindings{} Logistic compares AdaGrad in River with a log-loss scikit-learn SGD wrapper in CapyMOA (initial rate 0.05, inverse scaling and L2 by default). Its gap combines optimizer and wrapper effects.
 
-\librarymemory{} These process measurements include input buffers, retained allocations and the JVM where applicable. Sampling every 250 rows can miss transient peaks.
+\librarymemory{} These are process measurements for finite replays. They include the buffered input, timing arrays and the JVM where applicable. Sampling every 250 rows can miss transient peaks, and this setup does not establish a bound on learner memory for an unending stream.
 
 \clearpage
 \labpart{Part 2 \enspace/\enspace Step 9}
@@ -172,7 +172,7 @@ CluStream gave the strongest mean ARI on both streams. DenStream merged two stat
 \labpart{Part 2 \enspace/\enspace Step 10}
 \section{Online model selection}
 
-Use the 10,000-row SEA shift again. Compare each selection policy with single Hoeffding Tree (HT) and Hoeffding Adaptive Tree (HAT) baselines at grace period 100. HAT monitors its branches with drift detectors and can replace them.
+Use the 10,000-row SEA shift again. Compare each selection policy with single Hoeffding Tree (HT) and Hoeffding Adaptive Tree (HAT) baselines at grace period 100. HAT uses ADWIN to detect deteriorating branches and evaluate alternate subtrees (Barry, slide 38).
 
 \textbf{Bandit.} Epsilon-greedy selection with \ensuremath{\varepsilon}=0.15 and burn-in 300 bandit pulls. Candidates are HT and HAT, each with grace periods 50, 100 and 200.
 
@@ -203,6 +203,8 @@ AutoClass had the highest accuracy (89.92\%), 0.58 pp above the fixed HAT, with 
 The long streams use a fixed seed and Elec2 uses a prefix. Repeated timings measure execution variability on identical streams. They do not give predictive confidence intervals. Only abrupt supervised drifts have known change points here. Static benchmark rows retain their dataset order, which can create order effects. The observations assume immediate labels and available contemporaneous features. Runtime excludes JVM startup and cannot isolate its contribution to memory use. Results are specific to these versions and settings.
 
 \subsection*{References and reproducibility}
+
+{\small Mariam Barry. \textit{Online Machine Learning on Data Streams: Hoeffding trees, adaptive forests and adaptive boosting}. Course slides, Institut Polytechnique de Paris, 2026.\par}
 
 {\small \href{https://riverml.xyz/0.23.0/}{River 0.23.0 documentation and dataset reference}\par}
 

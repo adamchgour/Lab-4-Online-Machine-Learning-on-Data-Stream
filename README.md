@@ -37,7 +37,7 @@ Predict each observation in order, score against its target and train on it. Eve
 | Clustering | | Two 6,000-row Gaussian streams with three groups, one with a center shift at row 3,001 |
 
 - **Regression.** Compare a Hoeffding tree and five-tree adaptive random forest with mean leaves, AdaGrad linear regression, and exact kNN with five neighbors and a 200-row window. Metrics are MAE, RMSE and R².
-- **Classification.** Compare a Hoeffding tree, five-tree adaptive random forest, logistic learning and Gaussian Naive Bayes. Metrics are accuracy, macro F1 and Cohen’s kappa. The two libraries use the same input sequence, tree splitting settings and ensemble size. CapyMOA uses inverse-scaling SGD with log loss as its closest counterpart to River’s AdaGrad logistic model. Both start at a learning rate of 0.05. See [river_models.py](river_models.py) and [capy_models.py](capy_models.py), including the explicit MOA forest CLI.
+- **Classification.** Compare a Hoeffding tree, five-tree adaptive random forest, logistic learning and Gaussian Naive Bayes. Metrics are accuracy, macro F1 and Cohen’s kappa. The two libraries use the same input sequence and match the main tree and forest settings. Each forest tests the same number of features per split, the rounded square root of the feature count. CapyMOA uses inverse-scaling SGD with log loss as its closest counterpart to River’s AdaGrad logistic model. Both start at a learning rate of 0.05. See [river_models.py](river_models.py) and [capy_models.py](capy_models.py), including the explicit MOA forest CLI.
 - **Drift.** Apply ADWIN, Page–Hinkley and KSWIN to regression and ADWIN, DDM, EDDM and HDDM-A to classification. Starting at row 101, detectors receive the Hoeffding tree’s bounded absolute error in regression or 0/1 error in classification. Monitor mode records alarms. Reset mode replaces the learner after scoring the alarm row and trains the replacement on that row. Delay is measured from the first changed row to the first alarm in a 1,000-row window. All positions are 1-based. Real change points are unlabelled.
 - **Clustering.** Compare CluStream + K-means, DenStream + DBSCAN and ClusTree. Assign the next block of 250 points to the nearest centers from the previous boundary. Score adjusted Rand index on hidden group IDs, and report mean distance and center count. Scoring ClusTree’s micro-centers as final groups penalizes fragmentation. The Java schema contains a dummy target.
 - **AutoML.** Compare AutoClass, epsilon-greedy Bandit and Successive Halving on SEA shift with fixed Hoeffding and Hoeffding Adaptive Trees as baselines. Bandit and halving use a shared six-model grid, while AutoClass samples a wider parameter range in the same two learner families. See [autoclass.json](autoclass.json) and [unsupervised_automl.py](unsupervised_automl.py).
@@ -60,6 +60,8 @@ Supervised tables use componentwise medians across three timed replays with fres
 | `environment` | Hardware and main package versions |
 
 ### References
+
+- Mariam Barry, *Online Machine Learning on Data Streams*, course slides, 2026. Slides 16–19 cover streaming evaluation and drift, 29–32 cover Hoeffding splits, and 47–50 cover adaptive random forests.
 
 - [River 0.23 documentation and dataset catalog](https://riverml.xyz/0.23.0/)
 - [CapyMOA documentation](https://capymoa.org/)

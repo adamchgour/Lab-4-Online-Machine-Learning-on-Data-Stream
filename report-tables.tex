@@ -112,32 +112,32 @@
   \toprule
   \textbf{Stream} & \textbf{Learner} & \textbf{River acc.} & \textbf{Capy acc.} & \textbf{River (s)} & \textbf{Capy (s)} & \textbf{River (\ensuremath{\mu}s)} & \textbf{Capy (\ensuremath{\mu}s)} \\
   \midrule
-  Elec2 & HT & 79.39\% & 79.39\% & 0.1597 & 0.2838 & 10.4 & 18.6 \\
-   & ARF & 84.85\% & 85.49\% & 2.0982 & 0.7352 & 139.4 & 48.6 \\
-   & Logistic & 85.44\% & 81.24\% & 0.0978 & 4.7738 & 6.2 & 317.6 \\
-   & GaussianNB & 78.65\% & 78.56\% & 0.6406 & 0.2409 & 42.4 & 15.7 \\
+  Elec2 & HT & 79.39\% & 79.39\% & 0.1597 & 0.2799 & 10.4 & 18.4 \\
+   & ARF & 84.85\% & 84.36\% & 2.0982 & 0.7815 & 139.4 & 51.7 \\
+   & Logistic & 85.44\% & 81.24\% & 0.0978 & 4.7304 & 6.2 & 314.8 \\
+   & GaussianNB & 78.65\% & 78.56\% & 0.6406 & 0.2398 & 42.4 & 15.7 \\
   \addlinespace
-  Phishing & HT & 76.00\% & 76.00\% & 0.0140 & 0.0211 & 10.9 & 16.5 \\
-   & ARF & 88.16\% & 88.64\% & 0.1525 & 0.0393 & 121.5 & 31.1 \\
-   & Logistic & 89.04\% & 88.00\% & 0.0092 & 0.3955 & 7.0 & 315.8 \\
-   & GaussianNB & 88.40\% & 88.40\% & 0.0567 & 0.0200 & 44.9 & 15.7 \\
+  Phishing & HT & 76.00\% & 76.00\% & 0.0140 & 0.0214 & 10.9 & 16.8 \\
+   & ARF & 88.16\% & 88.32\% & 0.1525 & 0.0361 & 121.5 & 28.5 \\
+   & Logistic & 89.04\% & 88.00\% & 0.0092 & 0.4020 & 7.0 & 321.0 \\
+   & GaussianNB & 88.40\% & 88.40\% & 0.0567 & 0.0203 & 44.9 & 16.0 \\
   \addlinespace
-  Breast Cancer & HT & 62.39\% & 62.39\% & 0.0132 & 0.0106 & 22.8 & 18.3 \\
-   & ARF & 87.70\% & 89.28\% & 0.0781 & 0.0215 & 136.9 & 37.5 \\
-   & Logistic & 94.02\% & 92.97\% & 0.0095 & 0.1806 & 16.4 & 316.7 \\
-   & GaussianNB & 93.50\% & 93.67\% & 0.0400 & 0.0104 & 69.9 & 17.9 \\
+  Breast Cancer & HT & 62.39\% & 62.39\% & 0.0132 & 0.0107 & 22.8 & 18.5 \\
+   & ARF & 87.70\% & 87.52\% & 0.0781 & 0.0208 & 136.9 & 36.2 \\
+   & Logistic & 94.02\% & 92.97\% & 0.0095 & 0.1806 & 16.4 & 316.9 \\
+   & GaussianNB & 93.50\% & 93.67\% & 0.0400 & 0.0105 & 69.9 & 18.0 \\
   \addlinespace
-  SEA shift & HT & 77.86\% & 77.87\% & 0.0721 & 0.1581 & 6.9 & 15.5 \\
-   & ARF & 90.83\% & 90.94\% & 1.3140 & 0.3388 & 131.0 & 33.5 \\
-   & Logistic & 90.34\% & 79.66\% & 0.0467 & 3.1864 & 4.4 & 318.0 \\
-   & GaussianNB & 78.53\% & 78.53\% & 0.3816 & 0.1632 & 37.8 & 16.0 \\
+  SEA shift & HT & 77.86\% & 77.87\% & 0.0721 & 0.1590 & 6.9 & 15.6 \\
+   & ARF & 90.83\% & 90.78\% & 1.3140 & 0.2962 & 131.0 & 29.3 \\
+   & Logistic & 90.34\% & 79.66\% & 0.0467 & 3.1562 & 4.4 & 315.1 \\
+   & GaussianNB & 78.53\% & 78.53\% & 0.3816 & 0.1563 & 37.8 & 15.3 \\
   \bottomrule
   \end{tabular*}%
 }
 
-\newcommand{\libraryfindings}{CapyMOA is faster in 9 of 16 pairs. Its largest speedup is 3.9\ensuremath{\times} for ARF on Phishing. Its largest accuracy gain is +1.58 pp (ARF, Breast Cancer), and its largest loss is -10.68 pp (Logistic, SEA shift).}
+\newcommand{\libraryfindings}{CapyMOA is faster in 9 of 16 pairs. Its largest speedup is 4.5\ensuremath{\times} for ARF on SEA shift. Its largest accuracy gain is +0.18 pp (GaussianNB, Breast Cancer), and its largest loss is -10.68 pp (Logistic, SEA shift).}
 
-\newcommand{\librarymemory}{Sampled process peak RSS was 168--179 MiB across River's classification runs and 318--382 MiB for CapyMOA.}
+\newcommand{\librarymemory}{Sampled process peak RSS was 168--179 MiB across River's classification runs and 317--401 MiB for CapyMOA.}
 
 \expandafter\newcommand\csname reportdata@clustering\endcsname{%
   \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}llrrrrrr@{}}

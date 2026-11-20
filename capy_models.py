@@ -1,5 +1,5 @@
 """CapyMOA adapters for the shared numeric classification streams."""
-from math import isqrt
+from math import sqrt
 
 import numpy as np
 from capymoa.base import MOAClassifier
@@ -24,6 +24,8 @@ def capy_rows(rows, schema, feature_names):
 
 
 def classification_models(schema, seed, n_features):
+    # MOA mode 0 takes m literally. River's "sqrt" rounds before choosing m.
+    max_features = round(sqrt(n_features))
     return {
         "HT": lambda: HoeffdingTree(
             schema, random_seed=seed, grace_period=100, confidence=1e-5,
@@ -32,7 +34,7 @@ def classification_models(schema, seed, n_features):
         "ARF": lambda: MOAClassifier(
             moa_learner=AdaptiveRandomForest, schema=schema, random_seed=seed, CLI=(
                 "-l (ARFHoeffdingTree -g 100 -c 1e-5 -t 0.05 -l MC) "
-                f"-s 5 -o 1 -m {isqrt(n_features)} -a 6 "
+                f"-s 5 -o 0 -m {max_features} -a 6 "
                 "-x (ADWINChangeDetector -a 0.001) -p (ADWINChangeDetector -a 0.01) -j 1"
             ),
         ),
