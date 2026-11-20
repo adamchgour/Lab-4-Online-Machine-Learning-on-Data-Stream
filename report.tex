@@ -82,7 +82,7 @@ The prequential protocol follows Barry (slide 17). Predict with the model at $t-
 
 \labenvironment{} Supervised baseline costs are componentwise medians of three sequential replays with fresh learners. CapyMOA gets a discarded 256-row warm-up per pair. Mean and p95 measure per-row prediction and update latency. Rare slow rows can raise the mean above p95. Wall time includes loop and instrumentation overhead. Imports, loading, feature preparation, learner setup and final metric aggregation are outside the timed loop.
 
-Source code, exact configurations, notebook and raw results are in the \href{https://github.com/adamchgour/Lab-4-Online-Machine-Learning-on-Data-Stream}{GitHub repository}.
+The executable notebook and full results are in the \href{https://github.com/adamchgour/Lab-4-Online-Machine-Learning-on-Data-Stream}{Lab 4 GitHub repository}. An executed HTML export accompanies this report.
 
 \clearpage
 \labpart{Part 1 \enspace/\enspace Steps 2--3}
@@ -94,7 +94,7 @@ Source code, exact configurations, notebook and raw results are in the \href{htt
 
 \reportfigure[1]{regression}{MAE vs. mean cost. Each panel has its own score scale. Latency uses a logarithmic axis.}
 
-AdaGrad had the smallest mean latency on every regression stream. On Seoul bikes, kNN improved MAE from 171.00 to 169.41 rentals per hour at about $60\times$ the mean latency. AdaGrad also had the lowest appliance-energy MAE (33.15 Wh). Metro traffic made a stronger case for the forest. ARF reduced MAE from 520 to 420 vehicles per hour, about 19\%, at $35\times$ the mean latency.
+AdaGrad had the smallest mean latency on every regression stream. On Seoul bikes, kNN improved MAE from 171.00 to 169.41 rentals per hour at about $64\times$ the mean latency. AdaGrad also had the lowest appliance-energy MAE (33.15 Wh). Metro traffic made a stronger case for the forest. ARF reduced MAE from 520 to 420 vehicles per hour, about 19\%, at $34\times$ the mean latency.
 
 \clearpage
 \labpart{Part 1 \enspace/\enspace Step 4}
@@ -106,7 +106,7 @@ From row 101, every detector runs in monitor-only and in reset mode. A reset rep
 
 \reporttable{regressionDrift}{Synthetic results. Pairs show monitor / reset. Scores and latency use reset mode or the unmodified HT baseline.}
 
-\reporttable{regressionReal}{Real-stream counts show monitor/reset alarms and change from baseline under reset (MAE). Alarm positions are in the CSVs. Real streams lack labeled change points.}
+\reporttable{regressionReal}{Real-stream counts show monitor/reset alarms and change from baseline under reset (MAE). The notebook lists all alarm positions. Real streams lack labeled change points.}
 
 \reportfigure[1]{regression_drift}{Synthetic blocks of 250 rows. Vertical line marks the true shift. Alarm ticks denote monitor mode and dots denote reset mode.}
 
@@ -122,7 +122,7 @@ On Friedman shift, KSWIN detected the change after 15 rows, with eight earlier a
 
 \reportfigure[1]{classification}{Accuracy vs. mean cost. Each panel has its own score scale. Latency uses a logarithmic axis.}
 
-The Hoeffding tree led on room occupancy (98.07\%). On EEG, ARF improved accuracy from 90.48\% with logistic regression to 96.78\% at about $8.2\times$ the mean latency. On gas sensors, logistic regression matched ARF's 80.66\% accuracy while processing a row about $13\times$ faster. Macro F1 and kappa were nearly identical for those two gas-sensor models.
+The Hoeffding tree led on room occupancy (98.07\%). On EEG, ARF improved accuracy from 90.48\% with logistic regression to 96.78\% at about $8.7\times$ the mean latency. On gas sensors, logistic regression matched ARF's 80.66\% accuracy while processing a row about $13\times$ faster. Macro F1 and kappa were nearly identical for those two gas-sensor models.
 
 \clearpage
 \labpart{Part 1 \enspace/\enspace Step 5}
@@ -134,7 +134,7 @@ From row 101, every detector runs in monitor-only and in reset mode. A reset rep
 
 \reporttable{classificationDrift}{Synthetic results. Pairs show monitor / reset. Scores and latency use reset mode or the unmodified HT baseline.}
 
-\reporttable{classificationReal}{Real-stream counts show monitor/reset alarms and change from baseline under reset (accuracy). Alarm positions are in the CSVs. Real streams lack labeled change points.}
+\reporttable{classificationReal}{Real-stream counts show monitor/reset alarms and change from baseline under reset (accuracy). The notebook lists all alarm positions. Real streams lack labeled change points.}
 
 \reportfigure[1]{classification_drift}{Synthetic blocks of 250 rows. Vertical line marks the true shift. Alarm ticks denote monitor mode and dots denote reset mode.}
 
@@ -146,13 +146,13 @@ On SEA, HDDM-A detected the shift after 47 rows and improved accuracy from 77.86
 
 Four pairs use the same ordered inputs, scoring, seed and learner family. HT and ARF align the split settings and majority leaves. ARF also aligns five trees, $\mathrm{round}(\sqrt{d})$ candidate features out of $d$, Poisson(6) bagging, ADWIN drifts (\ensuremath{\delta}=0.001) and warnings (\ensuremath{\delta}=0.01) with one worker. Numeric observers, tie handling and implementation details can still differ.
 
-\reporttable{libraries}{End-to-end loop wall time and mean per-row latency. p95 latency, macro F1 and kappa are included in the per-library CSVs.}
+\reporttable{libraries}{End-to-end loop wall time and mean per-row latency. The notebook gives p95 latency, macro F1 and kappa for each library.}
 
 \reportfigure[1]{cross_library}{Positive values favor CapyMOA on accuracy. Values right of 1 favor CapyMOA on latency. The x-axis is logarithmic.}
 
 \libraryfindings{} Logistic compares AdaGrad in River with a log-loss scikit-learn SGD wrapper in CapyMOA (initial rate 0.05, inverse scaling and L2 by default). This pair differs in both optimizer and wrapper.
 
-\librarymemory{} These are process measurements for finite replays. They include the buffered input, timing arrays and the JVM where applicable. Sampling every 250 rows can miss transient peaks, and this setup does not establish a bound on learner memory for an unending stream.
+\librarymemory{} River runs first, before the JVM starts. Sampled notebook-process memory includes inputs, timing arrays and allocations retained across runs. CapyMOA measurements also include the JVM. Sampling every 250 rows can miss transient peaks.
 
 \clearpage
 \labpart{Part 2 \enspace/\enspace Step 9}
@@ -168,7 +168,7 @@ Give each clusterer features and a constant dummy class. Before training a 250-r
 
 \reportfigure[.90]{cluster_centers}{Cluster centers at three snapshots of the moving stream. ClusTree reports microsummaries while CluStream and DenStream report macro-clusters.}
 
-On room sensors, CluStream had mean ARI 0.807 and took about 35~\ensuremath{\mu}s per training update. DenStream reached 0.792 at about 100~\ensuremath{\mu}s. ClusTree trained fastest, but its 14 final micro-centers partition the room readings more finely than the two occupancy states. On the moving stream, DenStream reached an ARI of 1.000 over the last four blocks after recovering the three groups.
+On room sensors, CluStream had mean ARI 0.807 and took about 24~\ensuremath{\mu}s per training update. DenStream reached 0.792 at about 83~\ensuremath{\mu}s. ClusTree trained fastest, but its 14 final micro-centers partition the room readings more finely than the two occupancy states. On the moving stream, DenStream reached an ARI of 1.000 over the last four blocks after recovering the three groups.
 
 \clearpage
 \labpart{Part 2 \enspace/\enspace Step 10}
@@ -186,7 +186,7 @@ Use the 10,000-row SEA shift again. Compare each selection policy with single Ho
 
 \reportfigure[1]{automl}{Accuracy by 250-row block. The dotted line is the true shift. The HT and HAT curves are the fixed-configuration baselines.}
 
-AutoClass had the highest accuracy (90.22\%), 0.88 pp above the fixed HAT, with about $3.5\times$ its wall time. Successive halving nearly matched HAT accuracy with far higher cost and tail latency. The bandit did poorly immediately after drift, when its historical rewards could favor a learner suited to the earlier regime. Fixed HAT is the economical starting point for this stream and candidate space.
+AutoClass had the highest accuracy (90.55\%), 1.21 pp above the fixed HAT, with about $3.0\times$ its wall time. Successive halving nearly matched HAT accuracy with far higher cost and tail latency. The bandit did poorly immediately after drift, when its historical rewards could favor a learner suited to the earlier regime. Fixed HAT is the economical starting point for this stream and candidate space.
 
 \clearpage
 \labpart{Conclusion}
@@ -202,7 +202,7 @@ AutoClass had the highest accuracy (90.22\%), 0.88 pp above the fixed HAT, with 
 
 \subsection*{Limitations}
 
-The synthetic streams use a fixed seed and Metro traffic uses a prefix. Repeated timings measure execution variability on identical streams. They do not give predictive confidence intervals. The synthetic streams have known change points. The real streams have no labeled change points. Gas sensor batches preserve long-term order but do not provide exact observation timestamps. The observations assume immediate labels and available contemporaneous features. Runtime excludes JVM startup and cannot isolate its contribution to memory use. Results are specific to these versions and settings.
+The synthetic streams use a fixed seed and Metro traffic uses a prefix. Repeated timings measure execution variability on identical streams. AutoClass accuracy varied between runs even with its seed set. The synthetic streams have known change points. The real streams have no labeled change points. Gas sensor batches preserve long-term order but do not provide exact observation timestamps. The observations assume immediate labels and available contemporaneous features. Runtime excludes JVM startup and cannot isolate its contribution to memory use. Results are specific to these versions and settings.
 
 \subsection*{References and reproducibility}
 
@@ -225,7 +225,5 @@ The synthetic streams use a fixed seed and Metro traffic uses a prefix. Repeated
 \href{https://archive.ics.uci.edu/dataset/357/occupancy+detection}{Occupancy Detection},
 \href{https://archive.ics.uci.edu/dataset/264/eeg+eye+state}{EEG Eye State}, and
 \href{https://archive.ics.uci.edu/dataset/224/gas+sensor+array+drift+dataset}{Gas Sensor Array Drift}.\par}
-
-\href{https://github.com/adamchgour/Lab-4-Online-Machine-Learning-on-Data-Stream}{Lab repository} with pinned dependencies, experiment scripts, measured CSVs and figure sources.
 
 \end{document}
