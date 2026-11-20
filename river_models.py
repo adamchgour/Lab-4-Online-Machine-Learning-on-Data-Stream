@@ -1,5 +1,5 @@
 """River learner and detector configurations."""
-from river import drift, forest, linear_model, naive_bayes, neighbors, optim, tree
+from river import drift, forest, linear_model, naive_bayes, neighbors, optim, preprocessing, tree
 
 
 def regression_models(seed):
@@ -8,8 +8,10 @@ def regression_models(seed):
         "ARF": lambda: forest.ARFRegressor(
             n_models=5, grace_period=100, leaf_prediction="mean", seed=seed,
         ),
-        "AdaGrad": lambda: linear_model.LinearRegression(
-            optimizer=optim.AdaGrad(.10), intercept_lr=.05,
+        "AdaGrad": lambda: preprocessing.TargetStandardScaler(
+            regressor=linear_model.LinearRegression(
+                optimizer=optim.AdaGrad(.10), intercept_lr=.05,
+            ),
         ),
         "kNN": lambda: neighbors.KNNRegressor(
             n_neighbors=5, engine=neighbors.LazySearch(window_size=200), aggregation_method="mean",

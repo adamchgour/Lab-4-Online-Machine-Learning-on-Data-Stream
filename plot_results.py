@@ -13,9 +13,10 @@ OUT = ROOT / "figures"
 ACCENT = "#006d74"
 PALETTE = ("#006d74", "#b54919", "#6a4a9d", "#2568b2", "#916516")
 SHORT = {
-    "TrumpApproval": "Trump Approval", "ChickWeights": "Chick Weights",
-    "FriedmanShift": "Friedman shift", "BreastCancer": "Breast Cancer",
-    "SEAShift": "SEA shift", "GaussianStable": "Stationary", "GaussianShift": "Moving",
+    "SeoulBikes": "Seoul bikes", "ApplianceEnergy": "Appliance energy", "MetroTraffic": "Metro traffic",
+    "Occupancy": "Room occupancy", "EEGEyeState": "EEG eye state", "GasSensorDrift": "Gas sensor drift",
+    "FriedmanShift": "Friedman shift", "SEAShift": "SEA shift",
+    "OccupancySensors": "Room sensors", "GaussianShift": "Moving Gaussians",
     "PageHinkley": "Page–Hinkley", "HDDM_A": "HDDM-A",
 }
 
@@ -67,7 +68,9 @@ def facet_tradeoff(task):
         ax.set_xlabel("Mean µs")
         ax.margins(y=.25)
         if not regression:
-            ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}"))
+            ax.yaxis.set_major_formatter(FuncFormatter(
+                lambda v, _: f"{100*v:.1f}".rstrip("0").rstrip(".") + "%"
+            ))
     axes[0].set_ylabel("MAE ↓" if regression else "Accuracy ↑")
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="outside lower center", ncols=4)
@@ -142,7 +145,7 @@ def clustering():
             ax.axvline(3001, color="#243246", linestyle=":", linewidth=1.1)
         ax.set_title(SHORT[name], fontsize=9)
         ax.set_xlabel("Scored block start")
-        ax.set_ylim(-.04, 1.04)
+        ax.set_ylim(min(-.04, float(data.ari.min()) - .03), 1.04)
     axes[0].set_ylabel("Adjusted Rand index")
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="outside lower center", ncols=3)

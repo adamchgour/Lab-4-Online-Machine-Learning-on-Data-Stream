@@ -90,7 +90,7 @@ def main():
         md(
             "## CapyMOA clustering\n\n"
             "Score every new block with the previous snapshot’s centers. Compute adjusted Rand index "
-            "against the hidden group IDs. ClusTree exposes micro-centers."
+            "against held-back occupancy labels or simulated group IDs. ClusTree exposes micro-centers."
         ),
         code("display(read('clustering'))\nplot('clustering')\nplot('cluster_centers')"),
         md(

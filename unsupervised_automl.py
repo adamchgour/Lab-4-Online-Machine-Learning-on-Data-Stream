@@ -13,6 +13,7 @@ from sklearn.metrics import adjusted_rand_score
 
 from benchmark import classification_scores, measure, score_blocks, write_table
 from capy_models import capy_rows, classification_schema
+from real_streams import occupancy_clustering
 from streams import SEED, SWITCH, clustering_rows, load_rows
 
 CLUSTER_BLOCK = 250
@@ -38,27 +39,30 @@ def get_centers(model):
 def run_clustering():
     schema = Schema.from_custom(
         ["x1", "x2", "dummy"], target="dummy",
-        categories={"dummy": ["unused"]}, name="GaussianGroups",
+        categories={"dummy": ["unused"]}, name="Clustering",
     )
     methods = {
-        "CluStream": lambda: Clustream_with_kmeans(
-            schema, time_window=750, max_num_kernels=30, k_option=3,
+        "CluStream": lambda k: Clustream_with_kmeans(
+            schema, time_window=750, max_num_kernels=30, k_option=k,
         ),
-        "DenStream": lambda: Denstream_with_dbscan(
+        "DenStream": lambda _k: Denstream_with_dbscan(
             schema, horizon=750, epsilon=.55, beta=.2, mu=2, init_points=300,
             lambda_option=.25, speed=100,
         ),
-        "ClusTree": lambda: ClusTree(schema, horizon=750, max_height=5),
+        "ClusTree": lambda _k: ClusTree(schema, horizon=750, max_height=5),
     }
     summary, blocks, snapshots = [], [], []
-    for moving in (False, True):
-        x, hidden = clustering_rows(moving)
-        stream = "GaussianShift" if moving else "GaussianStable"
+    datasets = (
+        ("OccupancySensors", 2, occupancy_clustering()),
+        ("GaussianShift", 3, clustering_rows(moving=True)),
+    )
+    for stream, k, (x, hidden) in datasets:
+        moving = stream == "GaussianShift"
         # Constant dummy class makes the Java header valid without revealing hidden labels.
         rows = [LabeledInstance.from_array(schema, point, 0) for point in x]
         for name, factory in methods.items():
             print(f"CapyMOA clustering {stream} {name}", flush=True)
-            model = factory()
+            model = factory(k)
             identifiers = {"stream": stream, "model": name}
             fit_ns = np.empty(len(x))
             query_ns, ari_history = [], []

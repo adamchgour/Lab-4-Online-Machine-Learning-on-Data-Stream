@@ -1,15 +1,13 @@
 """Fixed, ordered streams shared across all experimental conditions."""
-from itertools import islice
-
 import numpy as np
-from river import datasets, preprocessing
-from sklearn.datasets import load_breast_cancer, load_diabetes
+from river import preprocessing
+from real_streams import appliance_energy, eeg_eye_state, gas_sensor_drift, metro_traffic, occupancy, seoul_bikes
 
 SEED = 42
 SWITCH = 5001  # 1-based first changed observation
 SYNTH_SIZE = 10_000
-REGRESSION = ("TrumpApproval", "ChickWeights", "Diabetes", "FriedmanShift")
-CLASSIFICATION = ("Elec2", "Phishing", "BreastCancer", "SEAShift")
+REGRESSION = ("SeoulBikes", "ApplianceEnergy", "MetroTraffic", "FriedmanShift")
+CLASSIFICATION = ("Occupancy", "EEGEyeState", "GasSensorDrift", "SEAShift")
 
 
 def friedman():
@@ -31,20 +29,14 @@ def sea():
         yield dict(enumerate(x)), y
 
 
-def sklearn_rows(data):
-    for x, y in zip(data.data, data.target, strict=True):
-        yield dict(enumerate(x)), y.item()
-
-
 def load_rows(name):
     sources = {
-        "TrumpApproval": datasets.TrumpApproval,
-        "ChickWeights": datasets.ChickWeights,
-        # Use raw diabetes features: sklearn's scaled=True uses full-dataset statistics.
-        "Diabetes": lambda: sklearn_rows(load_diabetes(scaled=False)),
-        "Elec2": lambda: islice(datasets.Elec2(), 15_000),
-        "Phishing": datasets.Phishing,
-        "BreastCancer": lambda: sklearn_rows(load_breast_cancer()),
+        "SeoulBikes": seoul_bikes,
+        "ApplianceEnergy": appliance_energy,
+        "MetroTraffic": metro_traffic,
+        "Occupancy": occupancy,
+        "EEGEyeState": eeg_eye_state,
+        "GasSensorDrift": lambda: gas_sensor_drift(SEED),
         "FriedmanShift": friedman,
         "SEAShift": sea,
     }

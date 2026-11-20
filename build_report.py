@@ -10,9 +10,10 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "output" / "pdf" / "lab-4-online-machine-learning.pdf"
 NAMES = {
-    "TrumpApproval": "Trump Approval", "ChickWeights": "Chick Weights",
-    "FriedmanShift": "Friedman shift", "BreastCancer": "Breast Cancer",
-    "SEAShift": "SEA shift", "GaussianStable": "Stationary", "GaussianShift": "Moving",
+    "SeoulBikes": "Seoul bikes", "ApplianceEnergy": "Appliance energy", "MetroTraffic": "Metro traffic",
+    "Occupancy": "Room occupancy", "EEGEyeState": "EEG eye state", "GasSensorDrift": "Gas sensor drift",
+    "FriedmanShift": "Friedman shift", "SEAShift": "SEA shift",
+    "OccupancySensors": "Room sensors", "GaussianShift": "Moving Gaussians",
     "PageHinkley": "Page–Hinkley", "HDDM_A": "HDDM-A",
 }
 
